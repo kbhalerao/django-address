@@ -88,16 +88,15 @@ def _to_python(value):
             locality_obj = None
 
     # Handle the address.
-    try:
-        if not (street_number or route or locality):
-            address_obj = Address.objects.get(raw=raw)
-        else:
-            address_obj = Address.objects.get(
-                street_number=street_number,
-                route=route,
-                locality=locality_obj
-            )
-    except Address.DoesNotExist:
+    if not (street_number or route or locality):
+        address_obj = Address.objects.filter(raw=raw).first()
+    else:
+        address_obj = Address.objects.filter(
+            street_number=street_number,
+            route=route,
+            locality=locality_obj
+        ).first()
+    if address_obj is None:
         address_obj = Address(
             street_number=street_number,
             route=route,
@@ -140,9 +139,13 @@ def to_python(value):
 
     # A string is considered a raw value.
     elif isinstance(value, basestring):
-        obj = Address(raw=value)
-        obj.save()
-        return obj
+        existing_address_obj = Address.objects.filter(raw=value).first()
+        if existing_address_obj is None:
+            obj = Address(raw=value)
+            obj.save()
+            return obj
+        else:
+            return existing_address_obj
 
     # A dictionary of named address components.
     elif isinstance(value, dict):

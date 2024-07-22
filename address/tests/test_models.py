@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.db import IntegrityError
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, MultipleObjectsReturned
 from django.db.models import Model
 from address.models import *
 from address.models import to_python
@@ -319,3 +319,20 @@ class AddressFieldTestCase(TestCase):
     #     self.assertEqual(test.address.locality.state.code, self.ad1_dict['state_code'])
     #     self.assertEqual(test.address.locality.state.country.name, self.ad1_dict['country'])
     #     self.assertEqual(test.address.locality.state.country.code, self.ad1_dict['country_code'])
+
+    def test_duplicate_not_created(self):
+        test_addr_string = "TestAddress,United States"
+        to_python(test_addr_string)
+        self.assertEqual(Address.objects.filter(raw=test_addr_string).count(), 1)
+        to_python(test_addr_string)
+        self.assertEqual(Address.objects.filter(raw=test_addr_string).count(), 1)
+
+    def test_handle_multiple_objects_returned(self):
+        test_addr_string = "TestAddress,United States"
+        Address.objects.create(raw=test_addr_string)
+        Address.objects.create(raw=test_addr_string)
+        test_addr_dict = {'raw': test_addr_string}
+        try:
+            to_python(test_addr_dict)
+        except MultipleObjectsReturned:
+            self.fail("MultipleObjectsReturned should not be thrown")
